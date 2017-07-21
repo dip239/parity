@@ -326,7 +326,6 @@ impl<'a> Runtime<'a> {
 
 	fn charge_gas(&mut self, amount: u64) -> bool {
 		let prev = self.gas_counter;
-		trace!(target: "wasm", "Gas {}/{}", prev + amount, self.gas_limit);
 		if prev + amount > self.gas_limit {
 			// exceeds gas
 			false

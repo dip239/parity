@@ -191,49 +191,42 @@ impl<'a> Runtime<'a> {
 		//
 		// method signature:
 		// fn (
-		// 	address: *const u8, 
-		// 	val_ptr: *const u8, 
-		// 	input_ptr: *const u8, 
-		// 	input_len: u32, 
-		// 	result_ptr: *mut u8, 
+		// 	address: *const u8,
+		// 	val_ptr: *const u8,
+		// 	input_ptr: *const u8,
+		// 	input_len: u32,
+		// 	result_ptr: *mut u8,
 		// 	result_len: u32,
 		// ) -> i32
 
-		trace!(target: "wasm", "runtime: call contract");
-		let mut context = context;
-		let result_alloc_len = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "    result_len: {:?}", result_alloc_len);
-
-		let result_ptr = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "    result_ptr: {:?}", result_ptr);
-
-		let input_len = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "     input_len: {:?}", input_len);
-
-		let input_ptr = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "     input_ptr: {:?}", input_ptr);
-
-		let val = self.pop_u256(&mut context)?;
-		trace!(target: "wasm", "           val: {:?}", val);
-
-		let address = self.pop_address(&mut context)?;
-		trace!(target: "wasm", "       address: {:?}", address);
-
-		Ok(None)
+		self.do_call(true, CallType::Call, context)
 	}
-		
-	pub fn call_code(&mut self, context: interpreter::CallerContext)
+
+
+	fn call_code(&mut self, context: interpreter::CallerContext)
 		-> Result<Option<interpreter::RuntimeValue>, interpreter::Error>
 	{
 		//
-		// method signature:
+		// signature (same as static call):
 		// fn (
-		// 	address: *const u8, 
-		// 	input_ptr: *const u8, 
-		// 	input_len: u32, 
-		// 	result_ptr: *mut u8, 
+		// 	address: *const u8,
+		// 	input_ptr: *const u8,
+		// 	input_len: u32,
+		// 	result_ptr: *mut u8,
 		// 	result_len: u32,
 		// ) -> i32
+
+		self.do_call(false, CallType::CallCode, context)
+	}
+
+	fn do_call(
+		&mut self,
+		use_val: bool,
+		call_type: CallType,
+		context: interpreter::CallerContext,
+	)
+		-> Result<Option<interpreter::RuntimeValue>, interpreter::Error>
+	{
 
 		trace!(target: "wasm", "runtime: call code");
 		let mut context = context;
@@ -248,6 +241,9 @@ impl<'a> Runtime<'a> {
 
 		let input_ptr = context.value_stack.pop_as::<i32>()? as u32;
 		trace!(target: "wasm", "     input_ptr: {:?}", input_ptr);
+
+		let val = if use_val { Some(self.pop_u256(&mut context)?) } else { None };
+		trace!(target: "wasm", "           val: {:?}", val);
 
 		let address = self.pop_address(&mut context)?;
 		trace!(target: "wasm", "       address: {:?}", address);
@@ -264,11 +260,11 @@ impl<'a> Runtime<'a> {
 			&gas,
 			&self.context.sender,
 			&self.context.address,
-			None,
+			val,
 			&payload,
 			&address,
 			&mut result[..],
-			CallType::CallCode,
+			call_type,
 		);
 
 		match call_result {
@@ -281,7 +277,23 @@ impl<'a> Runtime<'a> {
 				Ok(Some((-1i32).into()))
 			}
 		}
-	}		
+	}
+
+	pub fn static_call(&mut self, context: interpreter::CallerContext)
+		-> Result<Option<interpreter::RuntimeValue>, interpreter::Error>
+	{
+		// signature (same as code call):
+		// fn (
+		// 	address: *const u8,
+		// 	input_ptr: *const u8,
+		// 	input_len: u32,
+		// 	result_ptr: *mut u8,
+		// 	result_len: u32,
+		// ) -> i32
+
+		self.do_call(false, CallType::StaticCall, context)
+	}
+
 
 	/// Allocate memory using the wasm stack params
 	pub fn malloc(&mut self, context: interpreter::CallerContext)
@@ -314,6 +326,7 @@ impl<'a> Runtime<'a> {
 
 	fn charge_gas(&mut self, amount: u64) -> bool {
 		let prev = self.gas_counter;
+		trace!(target: "wasm", "Gas {}/{}", prev + amount, self.gas_limit);
 		if prev + amount > self.gas_limit {
 			// exceeds gas
 			false
@@ -460,9 +473,9 @@ impl<'a> interpreter::UserFunctionExecutor for Runtime<'a> {
 			"_dcall" => {
 				self.call_code(context)
 			},
-			// "_scall" => {
-			// 	self.static_call(context)
-			// },
+			"_scall" => {
+			 	self.static_call(context)
+			},
 			"_debug" => {
 				self.debug_log(context)
 			},

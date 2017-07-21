@@ -301,7 +301,7 @@ fn call_code() {
 			GasLeft::Known(_) => { panic!("Call test should return payload"); },
 			GasLeft::NeedsReturn { gas_left: gas, data: result, apply_state: _apply } => (gas, result.to_vec()),
 		}
-	}; 
+	};
 
 	trace!(target: "wasm", "fake_calls: {:?}", &ext.calls);
 	assert!(ext.calls.contains(
@@ -324,6 +324,8 @@ fn call_code() {
 
 #[test]
 fn call_static() {
+	::ethcore_logger::init_log();
+
 	let sender: Address = "0f572e5295c57f15886f9b263e2f6d2d6c7b5ec6".parse().unwrap();
 	let receiver: Address = "01030507090b0d0f11131517191b1d1f21232527".parse().unwrap();
 
@@ -355,12 +357,12 @@ fn call_static() {
 			receive_address: Some(receiver),
 			value: None,
 			data: vec![1u8, 2, 3, 5, 7, 11],
-			code_address: Some("0d13710000000000000000000000000000000000".parse().unwrap()),
+			code_address: Some("13077bfb00000000000000000000000000000000".parse().unwrap()),
 		}
 	));
 	assert_eq!(gas_left, U256::from(94196));
 
 	// siphash result
 	let res = LittleEndian::read_u32(&result[..]);
-	assert_eq!(res, 4198595614);	
+	assert_eq!(res, 4198595614);
 }

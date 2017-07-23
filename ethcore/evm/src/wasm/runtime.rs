@@ -157,13 +157,13 @@ impl<'a> Runtime<'a> {
 		trace!(target: "wasm", "runtime: create contract");
 		let mut context = context;
 		let result_ptr = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "    result_ptr: {:?}", result_ptr);
+		trace!(target: "wasm", "result_ptr: {:?}", result_ptr);
 		let code_len = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "    code_len: {:?}", code_len);
+		trace!(target: "wasm", "  code_len: {:?}", code_len);
 		let code_ptr = context.value_stack.pop_as::<i32>()? as u32;
-		trace!(target: "wasm", "    code_ptr: {:?}", code_ptr);
+		trace!(target: "wasm", "  code_ptr: {:?}", code_ptr);
 		let endowment = self.pop_u256(&mut context)?;
-		trace!(target: "wasm", "    val: {:?}", endowment);
+		trace!(target: "wasm", "       val: {:?}", endowment);
 
 		let code = self.memory.get(code_ptr, code_len as usize)?;
 
